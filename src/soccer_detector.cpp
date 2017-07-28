@@ -3,7 +3,7 @@
 #include <image_transport/image_transport.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <cv_breidge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.h>
 #include "std_msgs/Float32.h"
 #include "std_msgs/Int16.h"
 #include <iostream>
@@ -29,63 +29,71 @@ int hue_lower, hue_upper, sat_lower, sat_upper, value_lower, value_upper;
 bool first_reconfig = true;
 
 
-bool ball_captured = false;
-bool ball_detected = false
-bool goal
+
 // STATES
-int LOOKING_FOR_BALL = 0;
-int CHASING_BALL = 1;
-int LOOKING_FOR_GOAL = 2;
-int CHASING_GOAL = 3;
-int GOAL = 4; 
+const int LOOKING_FOR_BALL = 0;
+const int CHASING_BALL = 1;
+const int LOOKING_FOR_GOAL = 2;
+const int CHASING_GOAL = 3;
+const int GOAL = 4; 
 int CUR_STATE;
 
 void sonarCallback(const std_msgs::Int16& msg)
 { 
-	if (msg.data <= 5)
+	if (msg.data <= 5 && CUR_STATE == CHASING_BALL)
 	{
-		CUR_STATE = LOOKING_FOR_GOAL
-	}else{
-		CUR_STATE = LOOKING_FOR_BALL
-}
+		CUR_STATE = LOOKING_FOR_GOAL;
+	}else if (CUR_STATE == LOOKING_FOR_GOAL || CUR_STATE == CHASING_GOAL) {
+		CUR_STATE = LOOKING_FOR_BALL;
+	}
 }	
  
-void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+void imageCallback(const sensor_msgs::ImageConstPtr& msg){
+	ROS_INFO("CUR_STATE is %d", CUR_STATE);
 
-	switch (CUR_STATE); {
+	switch (CUR_STATE) {
 		case LOOKING_FOR_BALL:
-			hue_lower=2
-			hue_upper=52
-			sat_lower=64
-			sat_upper=255
-			value_lower=182
-			value_upper=25		
-
+			hue_lower=2;
+			hue_upper=52;
+			sat_lower=64;
+			sat_upper=255;
+			value_lower=182;
+			value_upper=255;	
+			break;
 		case CHASING_BALL:
-			hue_lower=2
-        	hue_upper=52
-        	sat_lower=64
-        	sat_upper=255
-        	value_lower=182
-        	value_up per=255
-
+			hue_lower=2;
+        	hue_upper=52;
+        	sat_lower=64;
+        	sat_upper=255;
+        	value_lower=182;
+        	value_upper=255;
+			break;
 		case LOOKING_FOR_GOAL:
-			hue_lower = 8
-			hue_upper = 13
-			sat_lower = 0
-			sat_upper = 255
-			value_lower=0
+			hue_lower = 8;
+			hue_upper = 13;
+			sat_lower = 0;
+			sat_upper = 255;
+			value_lower=0;
 			value_upper= 255 ;
+			break;
 		case CHASING_GOAL:
-			 hue_lower = 8
-            hue_upper = 13
-            sat_lower = 0
-            sat_upper = 255
-            value_lower=0
+			 hue_lower = 8;
+            hue_upper = 13;
+            sat_lower = 0;
+            sat_upper = 255;
+            value_lower=0;
             value_upper= 255 ;
+			break;
 		case GOAL:
-			bool goal = true;	
+			//do a thing i guess
+			ROS_INFO("WE DID IT!!!!! VICTORY!!!!");
+			exit(0);
+			break;
+		default:
+			CUR_STATE = LOOKING_FOR_BALL;
+			break;
 
+ }			
 //lower and upper thresholds for pixels on the line
     cv::Scalar lower_thresh(hue_lower, sat_lower, value_lower);
     cv::Scalar upper_thresh(hue_upper, sat_upper, value_upper); 
@@ -94,10 +102,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
  
     //Convert the image to HSV
     cv::cvtColor(src, hsv, CV_BGR2HSV);
- 
-    //lower and upper thresholds for pixels on the line
-    cv::Scalar lower_thresh(hue_lower, sat_lower, value_lower);
-    cv::Scalar upper_thresh(hue_upper, sat_upper, value_upper);
  
     //Create a mask with only white pixels
     cv::inRange(hsv, lower_thresh, upper_thresh, mask);
@@ -115,12 +119,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     if(moments.m00 > 500){
         //Calculate Normalized Error
         error_msg.data = center_of_mass.x - src.cols/2;
-    	if CUR_STATE = 
-
-	}else{
+    	if (CUR_STATE = LOOKING_FOR_BALL)
+			{ CUR_STATE = CHASING_BALL; 
+		
+		}else if (CUR_STATE = LOOKING_FOR_GOAL){
+			CUR_STATE = CHASING_GOAL;
+		}else{
         // special oerror message
         error_msg.data = 12345;
     }
+	}
+
+	if(moments.m00 > 10000 && CUR_STATE ==  CHASING_GOAL)
+	{
+		 CUR_STATE = GOAL;
+ 	}
+	
     line_error_pub.publish(error_msg);
  
     //Conertthe image back to BGR
@@ -129,18 +143,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //Plot the center of mass
     cv::circle(dst, center_of_mass, 5, cv::Scalar(0,0,255), -1);
  
-    sensor_msgs::ImagePtr msg;
+    sensor_msgs::ImagePtr out_img;
  
-    msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", dst).toImageMsg();
+    out_img = cv_bridge::CvImage(std_msgs::Header(), "bgr8", dst).toImageMsg();
  
-    user_image_pub.publish(msg);
+    user_image_pub.publish(out_img);
 
-	if (ball_detected = false)
-	{
-	//set velocity
-	}
+	
   }
-}
+
  
 void reconfigure_callback(soccer_bot::HueConfig &config, uint32_t level)
 {
@@ -164,15 +175,15 @@ int main(int argc, char **argv)
   ROS_INFO("Starting soccer_detector");
   ros::init(argc, argv, "line_detector");
   ros::NodeHandle nh;
-  sonar_sub = nh.subscribe<std_msgs::Int16>("/arduino/sonar_2", 10, sonarCallback);
+  sonar_sub = nh.subscribe("/arduino/sonar_2", 10, sonarCallback);
   
 
 
-  nh.param<int>("hue_lower", hue_lower, 80);
-  nh.param<int>("hue_upper", hue_upper, 150);
-  nh.param<int>("sat_lower", sat_lower, 20);
+  nh.param<int>("hue_lower", hue_lower, 2);
+  nh.param<int>("hue_upper", hue_upper, 52);
+  nh.param<int>("sat_lower", sat_lower, 64);
   nh.param<int>("sat_upper", sat_upper, 255);
-  nh.param<int>("value_lower", value_lower, 20);
+  nh.param<int>("value_lower", value_lower, 182);
   nh.param<int>("value_upper", value_upper, 255);
 
   image_transport::ImageTransport it(nh);

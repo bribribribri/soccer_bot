@@ -4,6 +4,6 @@
   <param name="Kd" type="double" value="0.0" />
 
   <include file="$(find jet_bringup)/launch/jet_real.launch"/>
-  <node name="soccer_detector" pkg="soccer_bot" type="soccer_detector"/>
+  <node name="soccer_detector" pkg="soccer_bot" type="soccer_detector" output="screen"/>
   <node name="soccer_pid" pkg="soccer_bot" type="soccer_pid"/>
 </launch>
